@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Broadcast Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1b2927;--teal:#0f6b5c;--teal-d:#0a4f44;--saffron:#e8a33d;--paper:#f5f6f2;--line:#dfe3dc}
+body{font-family:'Source Sans 3',sans-serif;background:var(--paper);color:var(--ink)}
+h1,h2,h3,.brand{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.01em}
+.side{background:var(--ink);min-height:100vh;color:#cfd8d4}
+.side .brand{color:#fff;font-size:1.25rem}
+.side .nav-link{color:#cfd8d4;border-radius:.5rem;padding:.6rem .8rem;cursor:pointer}
+.side .nav-link.active{background:var(--teal);color:#fff}
+.side .nav-link:hover:not(.active){background:#26383a}
+.panel{background:#fff;border:1px solid var(--line);border-radius:.75rem}
+.btn-teal{background:var(--teal);color:#fff;border:0}.btn-teal:hover{background:var(--teal-d);color:#fff}
+.form-control:focus,.form-select:focus,.form-check-input:focus,.btn:focus-visible,.nav-link:focus-visible{border-color:var(--teal);box-shadow:0 0 0 .2rem rgba(15,107,92,.25);outline:0}
+.form-check-input:checked{background-color:var(--teal);border-color:var(--teal)}
+.stat b{font-family:'Bricolage Grotesque';font-size:1.8rem;display:block;line-height:1.1}
+.chat{background:#e7ddd0;border-radius:.75rem;padding:1rem;min-height:220px}
+.bubble{background:#dcf8c6;border-radius:.6rem .6rem 0 .6rem;padding:.6rem .8rem;max-width:92%;margin-left:auto;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.12);font-size:.95rem}
+.mail{border:1px solid var(--line);border-radius:.6rem;background:#fff;padding:.8rem 1rem;white-space:pre-wrap;font-size:.95rem}
+.chip{border:1px solid var(--line);background:#fff;border-radius:2rem;padding:.25rem .8rem;font-size:.9rem;cursor:pointer}
+.chip:hover{border-color:var(--saffron);background:#fff8ea}
+.tag{font-size:.78rem;border-radius:1rem;padding:.1rem .55rem;background:#e8efec;color:var(--teal-d)}
+.tag.off{background:#f1f1f1;color:#999;text-decoration:line-through}
+.view{display:none}.view.show{display:block}
+@media(max-width:767px){.side{min-height:auto}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="container-fluid"><div class="row">
+
+<!-- Sidebar -->
+<nav class="col-md-3 col-lg-2 side p-3">
+  <div class="brand mb-4"><i class="bi bi-megaphone-fill text-warning me-2"></i>Broadcast</div>
+  <div class="nav flex-md-column gap-1" role="tablist">
+    <a class="nav-link active" tabindex="0" data-view="compose"><i class="bi bi-pencil-square me-2"></i>New message</a>
+    <a class="nav-link" tabindex="0" data-view="contacts"><i class="bi bi-people me-2"></i>Clients</a>
+    <a class="nav-link" tabindex="0" data-view="history"><i class="bi bi-clock-history me-2"></i>Sent history</a>
+  </div>
+  <p class="small mt-4 mb-0 opacity-75">Demo mode: messages are logged here, not delivered. See the <code>sendCampaign()</code> function to connect a real provider.</p>
+</nav>
+
+<main class="col-md-9 col-lg-10 p-3 p-lg-4">
+
+<!-- COMPOSE -->
+<section id="view-compose" class="view show">
+  <h1 class="h3 mb-3">New message</h1>
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="panel p-3 p-lg-4">
+        <label class="form-label fw-semibold">Start from a template</label>
+        <div class="d-flex flex-wrap gap-2 mb-3" id="templates"></div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="subject">Subject (email) / Template name (WhatsApp)</label>
+          <input id="subject" class="form-control" placeholder="e.g. Diwali greetings">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="body">Message</label>
+          <textarea id="body" rows="7" class="form-control" placeholder="Write your message. Use {name} and {company} to personalise."></textarea>
+          <div class="form-text"><span id="count">0</span> characters. {name} and {company} are replaced for each client.</div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label fw-semibold" for="audience">Send to</label>
+            <select id="audience" class="form-select"></select>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label fw-semibold" for="when">Schedule (optional)</label>
+            <input id="when" type="datetime-local" class="form-control">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold d-block">Channels</label>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="chWa" checked><label class="form-check-label" for="chWa"><i class="bi bi-whatsapp text-success"></i> WhatsApp</label></div>
+          <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="chEm" checked><label class="form-check-label" for="chEm"><i class="bi bi-envelope"></i> Email</label></div>
+        </div>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <button class="btn btn-teal px-4" id="sendBtn"><i class="bi bi-send me-2"></i><span id="sendLabel">Send now</span></button>
+          <span class="text-secondary" id="reach"></span>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="panel p-3">
+        <ul class="nav nav-pills mb-3" id="prevTabs">
+          <li class="nav-item"><button class="nav-link active btn-sm" data-p="wa">WhatsApp preview</button></li>
+          <li class="nav-item"><button class="nav-link btn-sm" data-p="em">Email preview</button></li>
+        </ul>
+        <div id="pvWa" class="chat"><div class="bubble" id="pvWaText"></div></div>
+        <div id="pvEm" class="d-none"><div class="mail"><b id="pvEmSub"></b><hr class="my-2"><span id="pvEmText"></span><hr class="my-2"><small class="text-secondary">Unsubscribe link is added automatically.</small></div></div>
+        <p class="small text-secondary mt-3 mb-0">WhatsApp: company-initiated messages must use a template approved by Meta, and clients must have opted in.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTS -->
+<section id="view-contacts" class="view">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Clients</h1>
+    <div class="d-flex gap-2">
+      <label class="btn btn-outline-secondary mb-0"><i class="bi bi-upload me-1"></i>Import CSV<input type="file" id="csv" accept=".csv" hidden></label>
+      <button class="btn btn-outline-secondary" id="exportBtn"><i class="bi bi-download me-1"></i>Export</button>
+      <button class="btn btn-teal" id="addBtn"><i class="bi bi-plus-lg me-1"></i>Add client</button>
+    </div>
+  </div>
+  <div class="row g-3 mb-3 text-center">
+    <div class="col-4"><div class="panel p-3 stat"><b id="stAll">0</b>Clients</div></div>
+    <div class="col-4"><div class="panel p-3 stat"><b id="stWa">0</b>Can get WhatsApp</div></div>
+    <div class="col-4"><div class="panel p-3 stat"><b id="stEm">0</b>Can get email</div></div>
+  </div>
+  <div class="panel p-3">
+    <input id="search" class="form-control mb-3" placeholder="Search by name, company, phone or email">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Group</th><th>Opt-in</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p id="empty" class="text-center text-secondary my-4 d-none">No clients yet. Add one, or import a CSV with columns: name, company, phone, email, group.</p>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section id="view-history" class="view">
+  <h1 class="h3 mb-3">Sent history</h1>
+  <div class="panel p-3"><div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Date</th><th>Subject</th><th>Audience</th><th>Channels</th><th>Reached</th><th>Status</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table></div>
+    <p id="histEmpty" class="text-center text-secondary my-4 d-none">Nothing sent yet. Your first message will appear here.</p>
+  </div>
+</section>
+
+</main></div></div>
+
+<!-- Client modal -->
+<div class="modal fade" id="cModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h2 class="modal-title h5" id="cTitle">Add client</h2><button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="cId">
+    <div class="row g-3">
+      <div class="col-6"><label class="form-label" for="cName">Name</label><input id="cName" class="form-control"></div>
+      <div class="col-6"><label class="form-label" for="cCompany">Company</label><input id="cCompany" class="form-control"></div>
+      <div class="col-6"><label class="form-label" for="cPhone">WhatsApp number</label><input id="cPhone" class="form-control" placeholder="919876543210"></div>
+      <div class="col-6"><label class="form-label" for="cEmail">Email</label><input id="cEmail" type="email" class="form-control"></div>
+      <div class="col-12"><label class="form-label" for="cGroup">Group</label><input id="cGroup" class="form-control" placeholder="e.g. Retail, Export, VIP"></div>
+      <div class="col-12">
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="cWa" checked><label class="form-check-label" for="cWa">Agreed to receive WhatsApp messages</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="cEm" checked><label class="form-check-label" for="cEm">Agreed to receive email</label></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button class="btn btn-teal" id="cSave">Save client</button></div>
+</div></div></div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="toast" class="toast text-bg-dark" role="status"><div class="toast-body" id="toastMsg"></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ========= 1. FIREBASE (optional) =========
+   Paste your config, add the Firebase SDK scripts, then swap the load/save
+   helpers below for Firestore calls (collections: contacts, campaigns).
+const firebaseConfig = { apiKey:"", authDomain:"", projectId:"" };
+*/
+
+/* ========= 2. SENDING HOOK =========
+   Replace the body with a call to your Cloud Function / backend, which holds
+   the WhatsApp (Cloud API, Gupshup, Interakt, WATI...) and email
+   (Brevo, SendGrid, SES...) keys. Never put API keys in this file.
+   payload = { subject, body, channels:[], recipients:[{name,company,phone,email}], scheduleAt }
+   Return { sent: number } */
+async function sendCampaign(payload){
+  // Example:
+  // const r = await fetch('https://YOUR-REGION-YOUR-PROJECT.cloudfunctions.net/sendCampaign',
+  //   {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  // return await r.json();
+  await new Promise(r=>setTimeout(r,700));            // demo only
+  return {sent: payload.recipients.length};
+}
+
+/* ========= Storage (localStorage demo) ========= */
+const store = {
+  get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){} }
+};
+let contacts = store.get('bc_contacts', [
+  {id:1,name:'Rahul Patil',company:'Patil Traders',phone:'919800000001',email:'rahul@example.com',group:'Retail',wa:true,em:true},
+  {id:2,name:'Sneha Kulkarni',company:'Kulkarni Exports',phone:'919800000002',email:'sneha@example.com',group:'Export',wa:true,em:false},
+  {id:3,name:'Amit Shah',company:'Shah Clinics',phone:'',email:'amit@example.com',group:'VIP',wa:false,em:true}
+]);
+let history = store.get('bc_history', []);
+const $ = s=>document.querySelector(s), $$ = s=>document.querySelectorAll(s);
+const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const save = ()=>{ store.set('bc_contacts',contacts); store.set('bc_history',history); };
+const modal = new bootstrap.Modal('#cModal'); const toast = new bootstrap.Toast('#toast');
+const say = m=>{ $('#toastMsg').textContent=m; toast.show(); };
+
+/* ========= Navigation ========= */
+$$('.side .nav-link').forEach(a=>{
+  const go=()=>{ $$('.side .nav-link').forEach(x=>x.classList.remove('active')); a.classList.add('active');
+    $$('.view').forEach(v=>v.classList.remove('show')); $('#view-'+a.dataset.view).classList.add('show'); };
+  a.onclick=go; a.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} };
+});
+
+/* ========= Contacts ========= */
+function renderContacts(){
+  const q = $('#search').value.toLowerCase();
+  const list = contacts.filter(c=>[c.name,c.company,c.phone,c.email,c.group].join(' ').toLowerCase().includes(q));
+  $('#rows').innerHTML = list.map(c=>`<tr>
+    <td><b>${esc(c.name)}</b><div class="small text-secondary">${esc(c.company)}</div></td>
+    <td>${esc(c.phone)||'-'}</td><td>${esc(c.email)||'-'}</td><td>${esc(c.group)||'-'}</td>
+    <td><span class="tag ${c.wa&&c.phone?'':'off'}">WhatsApp</span> <span class="tag ${c.em&&c.email?'':'off'}">Email</span></td>
+    <td class="text-end text-nowrap">
+      <button class="btn btn-sm btn-light" onclick="editC(${c.id})" aria-label="Edit ${esc(c.name)}"><i class="bi bi-pencil"></i></button>
+      <button class="btn btn-sm btn-light text-danger" onclick="delC(${c.id})" aria-label="Delete ${esc(c.name)}"><i class="bi bi-trash"></i></button>
+    </td></tr>`).join('');
+  $('#empty').classList.toggle('d-none', contacts.length>0);
+  $('#stAll').textContent = contacts.length;
+  $('#stWa').textContent = contacts.filter(c=>c.wa&&c.phone).length;
+  $('#stEm').textContent = contacts.filter(c=>c.em&&c.email).length;
+  const groups=[...new Set(contacts.map(c=>c.group).filter(Boolean))], cur=$('#audience').value;
+  $('#audience').innerHTML = '<option value="">All clients</option>'+groups.map(g=>`<option>${esc(g)}</option>`).join('');
+  $('#audience').value = groups.includes(cur)?cur:'';
+  updateReach();
+}
+$('#search').oninput = renderContacts;
+$('#addBtn').onclick = ()=>{ $('#cTitle').textContent='Add client'; $('#cId').value='';
+  ['Name','Company','Phone','Email','Group'].forEach(f=>$('#c'+f).value=''); $('#cWa').checked=$('#cEm').checked=true; modal.show(); };
+window.editC = id=>{ const c=contacts.find(x=>x.id===id); $('#cTitle').textContent='Edit client'; $('#cId').value=id;
+  $('#cName').value=c.name; $('#cCompany').value=c.company; $('#cPhone').value=c.phone; $('#cEmail').value=c.email; $('#cGroup').value=c.group;
+  $('#cWa').checked=c.wa; $('#cEm').checked=c.em; modal.show(); };
+window.delC = id=>{ const c=contacts.find(x=>x.id===id); if(confirm('Delete '+c.name+'?')){ contacts=contacts.filter(x=>x.id!==id); save(); renderContacts(); say('Client deleted'); } };
+$('#cSave').onclick = ()=>{
+  const name=$('#cName').value.trim(); if(!name){ say('Enter the client name'); return; }
+  const phone=$('#cPhone').value.replace(/\D/g,''), email=$('#cEmail').value.trim();
+  if(!phone && !email){ say('Add a phone number or an email'); return; }
+  const data={name,company:$('#cCompany').value.trim(),phone,email,group:$('#cGroup').value.trim(),wa:$('#cWa').checked,em:$('#cEm').checked};
+  const id=+$('#cId').value;
+  if(id) Object.assign(contacts.find(x=>x.id===id),data); else contacts.push({id:Date.now(),...data});
+  save(); renderContacts(); modal.hide(); say('Client saved');
+};
+$('#csv').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{
+    const lines=r.result.split(/\r?\n/).filter(Boolean); const head=lines.shift().split(',').map(h=>h.trim().toLowerCase()); let n=0;
+    lines.forEach((l,i)=>{ const v=l.split(',').map(x=>x.trim()), o={}; head.forEach((h,j)=>o[h]=v[j]||'');
+      if(!o.name||(!o.phone&&!o.email)) return;
+      contacts.push({id:Date.now()+i,name:o.name,company:o.company,phone:(o.phone||'').replace(/\D/g,''),email:o.email,group:o.group,wa:true,em:true}); n++; });
+    save(); renderContacts(); say(n+' clients imported'); e.target.value='';
+  }; r.readAsText(f);
+};
+$('#exportBtn').onclick = ()=>{
+  const csv=['name,company,phone,email,group'].concat(contacts.map(c=>[c.name,c.company,c.phone,c.email,c.group].join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='clients.csv'; a.click();
+};
+
+/* ========= Compose ========= */
+const TPL = {
+  'Diwali':['Diwali greetings','Dear {name},\n\nWishing you and everyone at {company} a bright and prosperous Diwali. Thank you for being with us this year.\n\nWarm regards,\nTeam'],
+  'Holi':['Holi greetings','Dear {name},\n\nMay the colours of Holi bring joy and success to you and {company}. Happy Holi!\n\nWarm regards,\nTeam'],
+  'Eid':['Eid Mubarak','Dear {name},\n\nEid Mubarak to you and your family. Wishing {company} peace and happiness.\n\nWarm regards,\nTeam'],
+  'Holiday notice':['Office closed notice','Dear {name},\n\nOur office will be closed on [date] for [occasion]. We will be back on [date]. For urgent matters please call [number].\n\nThank you,\nTeam'],
+  'Announcement':['Monthly update','Dear {name},\n\nHere is this month\'s update from us:\n\n[your announcement]\n\nThank you,\nTeam']
+};
+$('#templates').innerHTML = Object.keys(TPL).map(k=>`<button type="button" class="chip" data-t="${k}">${k}</button>`).join('');
+$$('#templates .chip').forEach(b=>b.onclick=()=>{ const t=TPL[b.dataset.t]; $('#subject').value=t[0]; $('#body').value=t[1]; preview(); });
+
+const fill=(t,c)=>t.replace(/\{name\}/g,c?c.name:'Rahul').replace(/\{company\}/g,c?c.company:'your company');
+function preview(){
+  const body=$('#body').value||'Your message will appear here.', c=contacts[0];
+  $('#pvWaText').textContent = fill(body,c);
+  $('#pvEmSub').textContent = $('#subject').value||'(No subject)';
+  $('#pvEmText').textContent = fill(body,c);
+  $('#count').textContent = $('#body').value.length;
+}
+function recipients(){
+  const g=$('#audience').value, wa=$('#chWa').checked, em=$('#chEm').checked;
+  return contacts.filter(c=>(!g||c.group===g) && ((wa&&c.wa&&c.phone)||(em&&c.em&&c.email)));
+}
+function updateReach(){
+  const r=recipients(), g=$('#audience').value, wa=$('#chWa').checked, em=$('#chEm').checked;
+  const nWa=wa?r.filter(c=>c.wa&&c.phone).length:0, nEm=em?r.filter(c=>c.em&&c.email).length:0;
+  $('#reach').textContent = `Reaches ${r.length} client${r.length===1?'':'s'} (${nWa} WhatsApp, ${nEm} email)`;
+  $('#sendLabel').textContent = $('#when').value ? 'Schedule message' : 'Send now';
+}
+['subject','body'].forEach(i=>$('#'+i).oninput=preview);
+['audience','when','chWa','chEm'].forEach(i=>$('#'+i).onchange=updateReach);
+$$('#prevTabs button').forEach(b=>b.onclick=()=>{ $$('#prevTabs button').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+  $('#pvWa').classList.toggle('d-none',b.dataset.p!=='wa'); $('#pvEm').classList.toggle('d-none',b.dataset.p!=='em'); });
+
+$('#sendBtn').onclick = async ()=>{
+  const subject=$('#subject').value.trim(), body=$('#body').value.trim(), channels=[];
+  if($('#chWa').checked) channels.push('WhatsApp'); if($('#chEm').checked) channels.push('Email');
+  const r=recipients();
+  if(!subject||!body){ say('Add a subject and a message'); return; }
+  if(!channels.length){ say('Choose WhatsApp, email or both'); return; }
+  if(!r.length){ say('No clients match this audience and channel'); return; }
+  const when=$('#when').value;
+  if(!confirm(`${when?'Schedule':'Send'} "${subject}" to ${r.length} client(s) via ${channels.join(' + ')}?`)) return;
+  const btn=$('#sendBtn'); btn.disabled=true;
+  try{
+    const res=await sendCampaign({subject,body,channels,scheduleAt:when||null,
+      recipients:r.map(c=>({name:c.name,company:c.company,phone:c.wa?c.phone:'',email:c.em?c.email:'',message:fill(body,c)}))});
+    history.unshift({date:new Date().toISOString(),subject,audience:$('#audience').value||'All clients',channels,count:res.sent,status:when?'Scheduled for '+new Date(when).toLocaleString('en-IN'):'Sent'});
+    save(); renderHistory(); say(when?'Message scheduled':'Message sent');
+    $('#subject').value=$('#body').value=$('#when').value=''; preview(); updateReach();
+  }catch(e){ say('Sending failed. Check your connection and try again.'); }
+  btn.disabled=false;
+};
+
+/* ========= History ========= */
+function renderHistory(){
+  $('#hist').innerHTML = history.map(h=>`<tr><td>${new Date(h.date).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})}</td>
+    <td><b>${esc(h.subject)}</b></td><td>${esc(h.audience)}</td><td>${h.channels.join(', ')}</td><td>${h.count}</td>
+    <td><span class="tag">${esc(h.status)}</span></td></tr>`).join('');
+  $('#histEmpty').classList.toggle('d-none', history.length>0);
+}
+
+renderContacts(); renderHistory(); preview();
+</script>
+</body>
+</html>
